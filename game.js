@@ -18,6 +18,8 @@ const MOVE_SPEED = 240;
 const CHARIZARD_DAMAGE = 20;
 const ATTACK_RANGE = 120;
 const ATTACK_COOLDOWN_MS = 400;
+const RIVAL_DAMAGE = 10;
+const CONTACT_COOLDOWN_MS = 800;
 const HURT_MS = CHARIZARD.hurt.totalMs;
 
 const FONDO = BACKGROUNDS.fondo1;
@@ -60,6 +62,7 @@ const rival = {
   alive: true,
   hurt: false,
   hurtElapsedMs: 0,
+  contactCooldownMs: 0,
 };
 
 const RIVAL_TINT = 'rgba(80, 120, 235, 0.55)';
@@ -232,6 +235,19 @@ function update(dt) {
         ent.hurtElapsedMs = 0;
       }
     }
+  }
+
+  if (rival.contactCooldownMs > 0) {
+    rival.contactCooldownMs = Math.max(0, rival.contactCooldownMs - dt * 1000);
+  }
+  if (
+    rival.alive &&
+    player.alive &&
+    rival.contactCooldownMs === 0 &&
+    Math.hypot(rival.x - player.x, rival.y - player.y) <= ATTACK_RANGE
+  ) {
+    applyDamage(player, RIVAL_DAMAGE);
+    rival.contactCooldownMs = CONTACT_COOLDOWN_MS;
   }
 
   const halfW = (CHARIZARD[player.moving ? 'walk' : 'idle'].frameWidth / 2) * SCALE;
