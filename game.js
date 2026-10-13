@@ -50,6 +50,9 @@ const rival = {
   alive: true,
 };
 
+const RIVAL_TINT = 'rgba(80, 120, 235, 0.55)';
+let rivalImg = null;
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -57,6 +60,19 @@ function loadImage(src) {
     img.onerror = () => reject(new Error(`No se pudo cargar: ${src}`));
     img.src = src;
   });
+}
+
+function makeTintedImage(img, color) {
+  const off = document.createElement('canvas');
+  off.width = img.width;
+  off.height = img.height;
+  const octx = off.getContext('2d');
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(img, 0, 0);
+  octx.globalCompositeOperation = 'source-atop';
+  octx.fillStyle = color;
+  octx.fillRect(0, 0, off.width, off.height);
+  return off;
 }
 
 function directionFromVector(dx, dy) {
@@ -83,6 +99,23 @@ function drawPlayer(img) {
   const frame = getFrame(anim, player.dir, frameIndexAt(anim, player.elapsedMs));
   const px = player.x;
   const py = player.y;
+  ctx.drawImage(
+    img,
+    frame.sx,
+    frame.sy,
+    frame.sw,
+    frame.sh,
+    px - frame.shadow.x * SCALE,
+    py - frame.shadow.y * SCALE,
+    frame.sw * SCALE,
+    frame.sh * SCALE,
+  );
+}
+
+function drawRival(img) {
+  const frame = getFrame('idle', rival.dir, 0);
+  const px = rival.x;
+  const py = rival.y;
   ctx.drawImage(
     img,
     frame.sx,
@@ -131,6 +164,7 @@ function render(fondoImg, charizardImg) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   drawBackground(fondoImg);
   drawPlayer(charizardImg);
+  drawRival(rivalImg);
 }
 
 async function main() {
@@ -139,6 +173,8 @@ async function main() {
     loadImage(CHARIZARD.idle.src.anim),
     loadImage(CHARIZARD.walk.src.anim),
   ]);
+
+  rivalImg = makeTintedImage(idleImg, RIVAL_TINT);
 
   window.addEventListener('keydown', (e) => {
     const dir = DIR_KEYS[e.code];
