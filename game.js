@@ -202,7 +202,7 @@ function update(dt) {
     else if (dir === 'right') dx += 1;
   }
 
-  const moving = dx !== 0 || dy !== 0;
+  const moving = player.alive && (dx !== 0 || dy !== 0);
   if (moving) {
     player.dir = directionFromVector(dx, dy);
     const len = Math.hypot(dx, dy);
@@ -256,6 +256,25 @@ function update(dt) {
   player.y = Math.min(Math.max(player.y, footH * 0.4), VIEW_H - 10);
 }
 
+function drawDefeatMessages() {
+  ctx.font = 'bold 32px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+
+  if (!rival.alive) {
+    ctx.fillStyle = '#ffd54f';
+    ctx.strokeText('¡Rival derrotado!', VIEW_W / 2, VIEW_H / 2 - 24);
+    ctx.fillText('¡Rival derrotado!', VIEW_W / 2, VIEW_H / 2 - 24);
+  }
+  if (!player.alive) {
+    ctx.fillStyle = '#ff5555';
+    ctx.strokeText('¡Has sido derrotado!', VIEW_W / 2, VIEW_H / 2 + 24);
+    ctx.fillText('¡Has sido derrotado!', VIEW_W / 2, VIEW_H / 2 + 24);
+  }
+}
+
 function render(fondoImg, charizardImg) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   drawBackground(fondoImg);
@@ -263,6 +282,7 @@ function render(fondoImg, charizardImg) {
   drawRival();
   drawHealthBar(20, 30, player.hp, player.maxHp, 'Charizard', 'left');
   drawHealthBar(VIEW_W - 200, 30, rival.hp, rival.maxHp, 'Rival', 'right');
+  drawDefeatMessages();
 }
 
 async function main() {
