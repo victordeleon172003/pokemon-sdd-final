@@ -15,9 +15,7 @@ const VIEW_H = canvas.height;
 const SCALE = 3;
 const MOVE_SPEED = 240;
 
-const CHARIZARD_DAMAGE = 20;
 const ATTACK_RANGE = 120;
-const ATTACK_COOLDOWN_MS = 400;
 const RIVAL_DAMAGE = 10;
 const CONTACT_COOLDOWN_MS = 800;
 const HURT_MS = CHARIZARD.hurt.totalMs;
@@ -30,6 +28,8 @@ const MOVES = [
   { id: 'garra', nombre: 'Garra Dragón', anim: 'swing', tipo: 'melee', dano: 30, rango: 120, pp: 15, maxPp: 15, cooldownMs: 600 },
   { id: 'giro', nombre: 'Giro Fuego', anim: 'rotate', tipo: 'melee', dano: 35, rango: 150, pp: 10, maxPp: 10, cooldownMs: 800 },
 ];
+
+const GOLPE = MOVES.find((m) => m.id === 'golpe');
 
 const DIR_KEYS = {
   ArrowUp: 'up',
@@ -55,7 +55,7 @@ const player = {
   alive: true,
   attacking: false,
   attackElapsedMs: 0,
-  attackCooldownMs: 0,
+  activeMove: null,
   attackCooldowns: { golpe: 0, lanzallamas: 0, garra: 0, giro: 0 },
   hurt: false,
   hurtElapsedMs: 0,
@@ -187,15 +187,23 @@ function applyDamage(target, amount) {
   target.hurtElapsedMs = 0;
 }
 
-function attemptAttack() {
-  if (!player.alive || player.attackCooldownMs > 0) return;
+function useMove(move) {
+  if (!player.alive) return;
+  if (move.pp <= 0) return;
+  if (player.attackCooldowns[move.id] > 0) return;
 
+  move.pp -= 1;
   player.attacking = true;
   player.attackElapsedMs = 0;
-  player.attackCooldownMs = ATTACK_COOLDOWN_MS;
+  player.activeMove = move;
+  player.attackCooldowns[move.id] = move.cooldownMs;
 
-  if (rival.alive && Math.hypot(rival.x - player.x, rival.y - player.y) <= ATTACK_RANGE) {
-    applyDamage(rival, CHARIZARD_DAMAGE);
+  if (
+    move.tipo === 'melee' &&
+    rival.alive &&
+    Math.hypot(rival.x - player.x, rival.y - player.y) <= move.rango
+  ) {
+    applyDamage(rival, move.dano);
   }
 }
 
@@ -224,9 +232,6 @@ function update(dt) {
   }
   player.elapsedMs += dt * 1000;
 
-  if (player.attackCooldownMs > 0) {
-    player.attackCooldownMs = Math.max(0, player.attackCooldownMs - dt * 1000);
-  }
   for (const id in player.attackCooldowns) {
     if (player.attackCooldowns[id] > 0) {
       player.attackCooldowns[id] = Math.max(0, player.attackCooldowns[id] - dt * 1000);
@@ -234,9 +239,10 @@ function update(dt) {
   }
   if (player.attacking) {
     player.attackElapsedMs += dt * 1000;
-    if (player.attackElapsedMs >= CHARIZARD.attack.totalMs) {
+    if (player.attackElapsedMs >= CHARIZARD[player.activeMove.anim].totalMs) {
       player.attacking = false;
       player.attackElapsedMs = 0;
+      player.activeMove = null;
     }
   }
 
@@ -320,7 +326,7 @@ async function main() {
     }
     if (e.code === 'KeyJ') {
       e.preventDefault();
-      attemptAttack();
+      useMove(GOLPE);
     }
   });
 
