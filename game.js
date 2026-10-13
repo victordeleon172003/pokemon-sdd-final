@@ -36,6 +36,18 @@ const player = {
   dir: 'down',
   moving: false,
   elapsedMs: 0,
+  hp: 100,
+  maxHp: 100,
+  alive: true,
+};
+
+const rival = {
+  x: VIEW_W * 0.7,
+  y: VIEW_H / 2,
+  dir: 'left',
+  hp: 100,
+  maxHp: 100,
+  alive: true,
 };
 
 function loadImage(src) {
