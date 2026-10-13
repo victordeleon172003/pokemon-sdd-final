@@ -24,6 +24,13 @@ const HURT_MS = CHARIZARD.hurt.totalMs;
 
 const FONDO = BACKGROUNDS.fondo1;
 
+const MOVES = [
+  { id: 'golpe', nombre: 'Golpe', anim: 'attack', tipo: 'melee', dano: 20, rango: 120, pp: 25, maxPp: 25, cooldownMs: 400 },
+  { id: 'lanzallamas', nombre: 'Lanzallamas', anim: 'shoot', tipo: 'proyectil', dano: 40, rango: 400, pp: 10, maxPp: 10, cooldownMs: 700 },
+  { id: 'garra', nombre: 'Garra Dragón', anim: 'swing', tipo: 'melee', dano: 30, rango: 120, pp: 15, maxPp: 15, cooldownMs: 600 },
+  { id: 'giro', nombre: 'Giro Fuego', anim: 'rotate', tipo: 'melee', dano: 35, rango: 150, pp: 10, maxPp: 10, cooldownMs: 800 },
+];
+
 const DIR_KEYS = {
   ArrowUp: 'up',
   ArrowDown: 'down',
@@ -49,6 +56,7 @@ const player = {
   attacking: false,
   attackElapsedMs: 0,
   attackCooldownMs: 0,
+  attackCooldowns: { golpe: 0, lanzallamas: 0, garra: 0, giro: 0 },
   hurt: false,
   hurtElapsedMs: 0,
 };
@@ -218,6 +226,11 @@ function update(dt) {
 
   if (player.attackCooldownMs > 0) {
     player.attackCooldownMs = Math.max(0, player.attackCooldownMs - dt * 1000);
+  }
+  for (const id in player.attackCooldowns) {
+    if (player.attackCooldowns[id] > 0) {
+      player.attackCooldowns[id] = Math.max(0, player.attackCooldowns[id] - dt * 1000);
+    }
   }
   if (player.attacking) {
     player.attackElapsedMs += dt * 1000;
