@@ -310,6 +310,7 @@ function renderMenu() {
 
 function openMenu() {
   if (menu.open) return;
+  if (!player.alive) return;
   menu.open = true;
   menu.selection = 0;
   keys.clear();
