@@ -18,6 +18,24 @@ const VIEW_H = canvas.height;
 const SCALE = 3;
 const MOVE_SPEED = 240;
 
+const PROJECTILE_SPEED = 700;
+const PROJECTILE_HIT_RADIUS = 40;
+const PROJECTILE_TARGET_OFFSET =
+  (CHARIZARD.idle.frames.down[0].shadow.y - CHARIZARD.idle.frames.down[0].center.y) * SCALE;
+
+const DIR_VECTORS = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  upRight: { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+  upLeft: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+  downRight: { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+  downLeft: { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
+};
+
+const projectiles = [];
+
 const ATTACK_RANGE = 120;
 const RIVAL_DAMAGE = 10;
 const CONTACT_COOLDOWN_MS = 800;
@@ -202,12 +220,68 @@ function useMove(move) {
   player.attackElapsedMs = 0;
   player.activeMove = move;
   player.attackCooldowns[move.id] = move.cooldownMs;
+  move.pp -= 1;
 
   if (move.tipo === 'melee') {
-    move.pp -= 1;
     if (rival.alive && Math.hypot(rival.x - player.x, rival.y - player.y) <= move.rango) {
       applyDamage(rival, move.dano);
     }
+  } else if (move.tipo === 'proyectil') {
+    spawnProjectile(move);
+  }
+}
+
+function spawnProjectile(move) {
+  const vec = DIR_VECTORS[player.dir] || DIR_VECTORS.down;
+  const frame = getFrame('shoot', player.dir, 0);
+  const originX = player.x - frame.shadow.x * SCALE + frame.head.x * SCALE;
+  const originY = player.y - frame.shadow.y * SCALE + frame.head.y * SCALE;
+  projectiles.push({
+    x: originX,
+    y: originY,
+    dir: player.dir,
+    vx: vec.x,
+    vy: vec.y,
+    remaining: move.rango,
+    damage: move.dano,
+    age: 0,
+  });
+}
+
+function updateProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    const travel = Math.min(PROJECTILE_SPEED * dt, p.remaining);
+    p.x += p.vx * travel;
+    p.y += p.vy * travel;
+    p.remaining -= travel;
+    p.age += dt * 1000;
+
+    const targetY = rival.y - PROJECTILE_TARGET_OFFSET;
+    const hit =
+      rival.alive &&
+      Math.hypot(rival.x - p.x, targetY - p.y) <= PROJECTILE_HIT_RADIUS;
+    if (hit) {
+      applyDamage(rival, p.damage);
+    }
+    if (hit || p.remaining <= 0) {
+      projectiles.splice(i, 1);
+    }
+  }
+}
+
+function drawProjectiles() {
+  for (const p of projectiles) {
+    const flicker = Math.sin(p.age * 0.03) * 3;
+    const radius = 18 + flicker;
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
+    grad.addColorStop(0, 'rgba(255, 255, 200, 0.95)');
+    grad.addColorStop(0.4, 'rgba(255, 180, 40, 0.9)');
+    grad.addColorStop(1, 'rgba(255, 80, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -309,6 +383,8 @@ function update(dt) {
     }
   }
 
+  updateProjectiles(dt);
+
   for (const ent of [player, rival]) {
     if (ent.hurt) {
       ent.hurtElapsedMs += dt * 1000;
@@ -362,6 +438,7 @@ function render(fondoImg, charizardImg) {
   drawBackground(fondoImg);
   drawPlayer(charizardImg);
   drawRival();
+  drawProjectiles();
   drawHealthBar(20, 30, player.hp, player.maxHp, 'Charizard', 'left');
   drawHealthBar(VIEW_W - 200, 30, rival.hp, rival.maxHp, 'Rival', 'right');
   drawDefeatMessages();
