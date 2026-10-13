@@ -15,6 +15,10 @@ const VIEW_H = canvas.height;
 const SCALE = 3;
 const MOVE_SPEED = 240;
 
+const CHARIZARD_DAMAGE = 20;
+const ATTACK_RANGE = 120;
+const ATTACK_COOLDOWN_MS = 400;
+
 const FONDO = BACKGROUNDS.fondo1;
 
 const DIR_KEYS = {
@@ -39,6 +43,9 @@ const player = {
   hp: 100,
   maxHp: 100,
   alive: true,
+  attacking: false,
+  attackElapsedMs: 0,
+  attackCooldownMs: 0,
 };
 
 const rival = {
@@ -52,6 +59,7 @@ const rival = {
 
 const RIVAL_TINT = 'rgba(80, 120, 235, 0.55)';
 let rivalImg = null;
+let attackImg = null;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -95,8 +103,9 @@ function drawBackground(img) {
 }
 
 function drawPlayer(img) {
-  const anim = player.moving ? 'walk' : 'idle';
-  const frame = getFrame(anim, player.dir, frameIndexAt(anim, player.elapsedMs));
+  const anim = player.attacking ? 'attack' : player.moving ? 'walk' : 'idle';
+  const elapsedMs = player.attacking ? player.attackElapsedMs : player.elapsedMs;
+  const frame = getFrame(anim, player.dir, frameIndexAt(anim, elapsedMs));
   const px = player.x;
   const py = player.y;
   ctx.drawImage(
@@ -155,6 +164,18 @@ function applyDamage(target, amount) {
   }
 }
 
+function attemptAttack() {
+  if (!player.alive || player.attackCooldownMs > 0) return;
+
+  player.attacking = true;
+  player.attackElapsedMs = 0;
+  player.attackCooldownMs = ATTACK_COOLDOWN_MS;
+
+  if (rival.alive && Math.hypot(rival.x - player.x, rival.y - player.y) <= ATTACK_RANGE) {
+    applyDamage(rival, CHARIZARD_DAMAGE);
+  }
+}
+
 function update(dt) {
   let dx = 0;
   let dy = 0;
@@ -180,6 +201,17 @@ function update(dt) {
   }
   player.elapsedMs += dt * 1000;
 
+  if (player.attackCooldownMs > 0) {
+    player.attackCooldownMs = Math.max(0, player.attackCooldownMs - dt * 1000);
+  }
+  if (player.attacking) {
+    player.attackElapsedMs += dt * 1000;
+    if (player.attackElapsedMs >= CHARIZARD.attack.totalMs) {
+      player.attacking = false;
+      player.attackElapsedMs = 0;
+    }
+  }
+
   const halfW = (CHARIZARD[player.moving ? 'walk' : 'idle'].frameWidth / 2) * SCALE;
   const footH = CHARIZARD[player.moving ? 'walk' : 'idle'].frameHeight * SCALE;
   player.x = Math.min(Math.max(player.x, halfW), VIEW_W - halfW);
@@ -196,19 +228,25 @@ function render(fondoImg, charizardImg) {
 }
 
 async function main() {
-  const [fondoImg, idleImg, walkImg] = await Promise.all([
+  const [fondoImg, idleImg, walkImg, attackSrcImg] = await Promise.all([
     loadImage(FONDO.src),
     loadImage(CHARIZARD.idle.src.anim),
     loadImage(CHARIZARD.walk.src.anim),
+    loadImage(CHARIZARD.attack.src.anim),
   ]);
 
   rivalImg = makeTintedImage(idleImg, RIVAL_TINT);
+  attackImg = attackSrcImg;
 
   window.addEventListener('keydown', (e) => {
     const dir = DIR_KEYS[e.code];
     if (dir) {
       e.preventDefault();
       keys.add(e.code);
+    }
+    if (e.code === 'KeyJ') {
+      e.preventDefault();
+      attemptAttack();
     }
   });
 
@@ -223,7 +261,7 @@ async function main() {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     update(dt);
-    const img = player.moving ? walkImg : idleImg;
+    const img = player.attacking ? attackImg : player.moving ? walkImg : idleImg;
     render(fondoImg, img);
     requestAnimationFrame(loop);
   }
