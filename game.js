@@ -129,6 +129,25 @@ function drawRival(img) {
   );
 }
 
+function drawHealthBar(x, y, hp, maxHp, label, align) {
+  const w = 180;
+  const h = 16;
+  const ratio = Math.max(0, hp) / maxHp;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+  ctx.fillStyle = '#333333';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = ratio > 0.5 ? '#4caf50' : ratio > 0.25 ? '#ffc107' : '#f44336';
+  ctx.fillRect(x, y, w * ratio, h);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.textAlign = align;
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${label} ${hp}/${maxHp}`, align === 'right' ? x + w : x, y - 6);
+}
+
 function update(dt) {
   let dx = 0;
   let dy = 0;
@@ -165,6 +184,8 @@ function render(fondoImg, charizardImg) {
   drawBackground(fondoImg);
   drawPlayer(charizardImg);
   drawRival(rivalImg);
+  drawHealthBar(20, 30, player.hp, player.maxHp, 'Charizard', 'left');
+  drawHealthBar(VIEW_W - 200, 30, rival.hp, rival.maxHp, 'Rival', 'right');
 }
 
 async function main() {
