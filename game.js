@@ -75,7 +75,7 @@ const rival = {
 
 const RIVAL_TINT = 'rgba(80, 120, 235, 0.55)';
 let rivalImg = null;
-let attackImg = null;
+let moveImages = {};
 let hurtImg = null;
 let rivalHurtImg = null;
 
@@ -121,7 +121,7 @@ function drawBackground(img) {
 }
 
 function drawPlayer(img) {
-  const anim = player.hurt ? 'hurt' : player.attacking ? 'attack' : player.moving ? 'walk' : 'idle';
+  const anim = player.hurt ? 'hurt' : player.attacking ? player.activeMove.anim : player.moving ? 'walk' : 'idle';
   const elapsedMs = player.hurt ? player.hurtElapsedMs : player.attacking ? player.attackElapsedMs : player.elapsedMs;
   const frame = getFrame(anim, player.dir, frameIndexAt(anim, elapsedMs));
   const px = player.x;
@@ -192,18 +192,16 @@ function useMove(move) {
   if (move.pp <= 0) return;
   if (player.attackCooldowns[move.id] > 0) return;
 
-  move.pp -= 1;
   player.attacking = true;
   player.attackElapsedMs = 0;
   player.activeMove = move;
   player.attackCooldowns[move.id] = move.cooldownMs;
 
-  if (
-    move.tipo === 'melee' &&
-    rival.alive &&
-    Math.hypot(rival.x - player.x, rival.y - player.y) <= move.rango
-  ) {
-    applyDamage(rival, move.dano);
+  if (move.tipo === 'melee') {
+    move.pp -= 1;
+    if (rival.alive && Math.hypot(rival.x - player.x, rival.y - player.y) <= move.rango) {
+      applyDamage(rival, move.dano);
+    }
   }
 }
 
@@ -305,16 +303,19 @@ function render(fondoImg, charizardImg) {
 }
 
 async function main() {
-  const [fondoImg, idleImg, walkImg, attackSrcImg, hurtSrcImg] = await Promise.all([
+  const [fondoImg, idleImg, walkImg, attackImg, shootImg, swingImg, rotateImg, hurtSrcImg] = await Promise.all([
     loadImage(FONDO.src),
     loadImage(CHARIZARD.idle.src.anim),
     loadImage(CHARIZARD.walk.src.anim),
     loadImage(CHARIZARD.attack.src.anim),
+    loadImage(CHARIZARD.shoot.src.anim),
+    loadImage(CHARIZARD.swing.src.anim),
+    loadImage(CHARIZARD.rotate.src.anim),
     loadImage(CHARIZARD.hurt.src.anim),
   ]);
 
   rivalImg = makeTintedImage(idleImg, RIVAL_TINT);
-  attackImg = attackSrcImg;
+  moveImages = { attack: attackImg, shoot: shootImg, swing: swingImg, rotate: rotateImg };
   hurtImg = hurtSrcImg;
   rivalHurtImg = makeTintedImage(hurtSrcImg, RIVAL_TINT);
 
@@ -341,7 +342,7 @@ async function main() {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     update(dt);
-    const img = player.hurt ? hurtImg : player.attacking ? attackImg : player.moving ? walkImg : idleImg;
+    const img = player.hurt ? hurtImg : player.attacking ? moveImages[player.activeMove.anim] : player.moving ? walkImg : idleImg;
     render(fondoImg, img);
     requestAnimationFrame(loop);
   }
