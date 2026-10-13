@@ -148,6 +148,13 @@ function drawHealthBar(x, y, hp, maxHp, label, align) {
   ctx.fillText(`${label} ${hp}/${maxHp}`, align === 'right' ? x + w : x, y - 6);
 }
 
+function applyDamage(target, amount) {
+  target.hp = Math.max(0, target.hp - amount);
+  if (target.hp === 0) {
+    target.alive = false;
+  }
+}
+
 function update(dt) {
   let dx = 0;
   let dy = 0;
