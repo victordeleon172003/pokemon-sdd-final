@@ -9,6 +9,9 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+const menuEl = document.getElementById('attack-menu');
+const menuListEl = document.getElementById('attack-menu-list');
+
 const VIEW_W = canvas.width;
 const VIEW_H = canvas.height;
 
@@ -30,6 +33,9 @@ const MOVES = [
 ];
 
 const GOLPE = MOVES.find((m) => m.id === 'golpe');
+
+const menu = { open: false, selection: 0 };
+let menuItems = [];
 
 const DIR_KEYS = {
   ArrowUp: 'up',
@@ -205,6 +211,65 @@ function useMove(move) {
   }
 }
 
+function buildMenu() {
+  menuListEl.innerHTML = '';
+  menuItems = MOVES.map((move) => {
+    const item = document.createElement('li');
+    item.className = 'attack-menu__item';
+    const name = document.createElement('span');
+    name.textContent = move.nombre;
+    const pp = document.createElement('span');
+    pp.className = 'attack-menu__pp';
+    item.append(name, pp);
+    menuListEl.append(item);
+    return { el: item, ppEl: pp, move };
+  });
+}
+
+function renderMenu() {
+  menuItems.forEach((item, index) => {
+    item.el.classList.toggle('is-selected', index === menu.selection);
+    item.el.classList.toggle('is-disabled', item.move.pp <= 0);
+    item.ppEl.textContent = `PP ${item.move.pp}/${item.move.maxPp}`;
+  });
+}
+
+function openMenu() {
+  if (menu.open) return;
+  menu.open = true;
+  menu.selection = 0;
+  keys.clear();
+  renderMenu();
+  menuEl.classList.remove('hidden');
+}
+
+function closeMenu() {
+  menu.open = false;
+  menuEl.classList.add('hidden');
+}
+
+function toggleMenu() {
+  if (menu.open) {
+    closeMenu();
+  } else {
+    openMenu();
+  }
+}
+
+function moveSelection(delta) {
+  const count = MOVES.length;
+  menu.selection = (menu.selection + delta + count) % count;
+  renderMenu();
+}
+
+function executeSelected() {
+  const move = MOVES[menu.selection];
+  if (move.pp <= 0) return;
+  if (player.attackCooldowns[move.id] > 0) return;
+  useMove(move);
+  closeMenu();
+}
+
 function update(dt) {
   let dx = 0;
   let dy = 0;
@@ -319,7 +384,30 @@ async function main() {
   hurtImg = hurtSrcImg;
   rivalHurtImg = makeTintedImage(hurtSrcImg, RIVAL_TINT);
 
+  buildMenu();
+
   window.addEventListener('keydown', (e) => {
+    if (e.code === 'Tab') {
+      e.preventDefault();
+      toggleMenu();
+      return;
+    }
+    if (menu.open) {
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
+        moveSelection(-1);
+      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        e.preventDefault();
+        moveSelection(1);
+      } else if (e.code === 'Enter') {
+        e.preventDefault();
+        executeSelected();
+      } else if (e.code === 'Escape') {
+        e.preventDefault();
+        closeMenu();
+      }
+      return;
+    }
     const dir = DIR_KEYS[e.code];
     if (dir) {
       e.preventDefault();
@@ -341,7 +429,9 @@ async function main() {
   function loop(now) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    update(dt);
+    if (!menu.open) {
+      update(dt);
+    }
     const img = player.hurt ? hurtImg : player.attacking ? moveImages[player.activeMove.anim] : player.moving ? walkImg : idleImg;
     render(fondoImg, img);
     requestAnimationFrame(loop);

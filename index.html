@@ -8,8 +8,15 @@
 </head>
 <body>
   <main>
-    <canvas id="game" width="960" height="540"></canvas>
-    <p class="hint">Mover: <strong>WASD</strong> o <strong>flechas</strong></p>
+    <div class="stage">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div id="attack-menu" class="attack-menu hidden" role="dialog" aria-label="Menú de ataques">
+        <h2 class="attack-menu__title">Ataques</h2>
+        <ul class="attack-menu__list" id="attack-menu-list"></ul>
+        <p class="attack-menu__hint">W/S o ↑/↓ · Enter: usar · Esc/Tab: cerrar</p>
+      </div>
+    </div>
+    <p class="hint">Mover: <strong>WASD</strong> o <strong>flechas</strong> · <strong>J</strong>: Golpe · <strong>Tab</strong>: ataques</p>
   </main>
   <script type="module" src="game.js"></script>
 </body>
