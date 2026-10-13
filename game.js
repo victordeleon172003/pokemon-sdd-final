@@ -18,6 +18,7 @@ const MOVE_SPEED = 240;
 const CHARIZARD_DAMAGE = 20;
 const ATTACK_RANGE = 120;
 const ATTACK_COOLDOWN_MS = 400;
+const HURT_MS = CHARIZARD.hurt.totalMs;
 
 const FONDO = BACKGROUNDS.fondo1;
 
@@ -46,6 +47,8 @@ const player = {
   attacking: false,
   attackElapsedMs: 0,
   attackCooldownMs: 0,
+  hurt: false,
+  hurtElapsedMs: 0,
 };
 
 const rival = {
@@ -55,11 +58,15 @@ const rival = {
   hp: 100,
   maxHp: 100,
   alive: true,
+  hurt: false,
+  hurtElapsedMs: 0,
 };
 
 const RIVAL_TINT = 'rgba(80, 120, 235, 0.55)';
 let rivalImg = null;
 let attackImg = null;
+let hurtImg = null;
+let rivalHurtImg = null;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -103,8 +110,8 @@ function drawBackground(img) {
 }
 
 function drawPlayer(img) {
-  const anim = player.attacking ? 'attack' : player.moving ? 'walk' : 'idle';
-  const elapsedMs = player.attacking ? player.attackElapsedMs : player.elapsedMs;
+  const anim = player.hurt ? 'hurt' : player.attacking ? 'attack' : player.moving ? 'walk' : 'idle';
+  const elapsedMs = player.hurt ? player.hurtElapsedMs : player.attacking ? player.attackElapsedMs : player.elapsedMs;
   const frame = getFrame(anim, player.dir, frameIndexAt(anim, elapsedMs));
   const px = player.x;
   const py = player.y;
@@ -121,8 +128,11 @@ function drawPlayer(img) {
   );
 }
 
-function drawRival(img) {
-  const frame = getFrame('idle', rival.dir, 0);
+function drawRival() {
+  const anim = rival.hurt ? 'hurt' : 'idle';
+  const img = rival.hurt ? rivalHurtImg : rivalImg;
+  const elapsedMs = rival.hurt ? rival.hurtElapsedMs : 0;
+  const frame = getFrame(anim, rival.dir, frameIndexAt(anim, elapsedMs));
   const px = rival.x;
   const py = rival.y;
   ctx.drawImage(
@@ -162,6 +172,8 @@ function applyDamage(target, amount) {
   if (target.hp === 0) {
     target.alive = false;
   }
+  target.hurt = true;
+  target.hurtElapsedMs = 0;
 }
 
 function attemptAttack() {
@@ -212,6 +224,16 @@ function update(dt) {
     }
   }
 
+  for (const ent of [player, rival]) {
+    if (ent.hurt) {
+      ent.hurtElapsedMs += dt * 1000;
+      if (ent.hurtElapsedMs >= HURT_MS) {
+        ent.hurt = false;
+        ent.hurtElapsedMs = 0;
+      }
+    }
+  }
+
   const halfW = (CHARIZARD[player.moving ? 'walk' : 'idle'].frameWidth / 2) * SCALE;
   const footH = CHARIZARD[player.moving ? 'walk' : 'idle'].frameHeight * SCALE;
   player.x = Math.min(Math.max(player.x, halfW), VIEW_W - halfW);
@@ -222,21 +244,24 @@ function render(fondoImg, charizardImg) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   drawBackground(fondoImg);
   drawPlayer(charizardImg);
-  drawRival(rivalImg);
+  drawRival();
   drawHealthBar(20, 30, player.hp, player.maxHp, 'Charizard', 'left');
   drawHealthBar(VIEW_W - 200, 30, rival.hp, rival.maxHp, 'Rival', 'right');
 }
 
 async function main() {
-  const [fondoImg, idleImg, walkImg, attackSrcImg] = await Promise.all([
+  const [fondoImg, idleImg, walkImg, attackSrcImg, hurtSrcImg] = await Promise.all([
     loadImage(FONDO.src),
     loadImage(CHARIZARD.idle.src.anim),
     loadImage(CHARIZARD.walk.src.anim),
     loadImage(CHARIZARD.attack.src.anim),
+    loadImage(CHARIZARD.hurt.src.anim),
   ]);
 
   rivalImg = makeTintedImage(idleImg, RIVAL_TINT);
   attackImg = attackSrcImg;
+  hurtImg = hurtSrcImg;
+  rivalHurtImg = makeTintedImage(hurtSrcImg, RIVAL_TINT);
 
   window.addEventListener('keydown', (e) => {
     const dir = DIR_KEYS[e.code];
@@ -261,7 +286,7 @@ async function main() {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     update(dt);
-    const img = player.attacking ? attackImg : player.moving ? walkImg : idleImg;
+    const img = player.hurt ? hurtImg : player.attacking ? attackImg : player.moving ? walkImg : idleImg;
     render(fondoImg, img);
     requestAnimationFrame(loop);
   }
